@@ -3,7 +3,7 @@
 import { supabase } from "./supabase.js";
 
 const PROFILE_COLUMNS =
-  "id, display_name, email, discipline, bio, profile_picture_url, github_url, linkedin_url, youtube_url, created_at";
+  "id, display_name, email, discipline, bio, profile_picture_url, github_url, linkedin_url, youtube_url, resume_url, created_at";
 const PROJECT_COLUMNS =
   "id, user_id, title, tags, description, image_url, project_link, github_link, cad_link, report_link, youtube_link, created_at";
 
@@ -16,6 +16,7 @@ const PROFILE_FIELDS = {
   githubUrl: "github_url",
   linkedinUrl: "linkedin_url",
   youtubeUrl: "youtube_url",
+  resumeUrl: "resume_url",
 };
 const PROJECT_FIELDS = {
   title: "title",
@@ -38,6 +39,7 @@ const toProfile = (r) => ({
   githubUrl: r.github_url,
   linkedinUrl: r.linkedin_url,
   youtubeUrl: r.youtube_url ?? "",
+  resumeUrl: r.resume_url ?? "",
   createdAt: r.created_at,
 });
 
@@ -90,7 +92,16 @@ export async function saveUserProfile(uid, data) {
 }
 
 export async function uploadProfilePicture(uid, blob) {
-  return uploadImage("profile_pictures", uid, blob);
+  return uploadFile("profile_pictures", uid, blob);
+}
+
+/** Uploads (or replaces) the user's resume PDF and returns its public URL. */
+export async function uploadResume(uid, file) {
+  return uploadFile("resumes", uid, file, "application/pdf");
+}
+
+export async function deleteResume(uid) {
+  await deleteFile("resumes", uid);
 }
 
 // ---------- Projects ----------
@@ -130,7 +141,7 @@ export async function createProject(uid, fields, imageBlob) {
       .single()
   );
   if (imageBlob) {
-    const imageUrl = await uploadImage("project_images", id, imageBlob);
+    const imageUrl = await uploadFile("project_images", id, imageBlob);
     unwrap(await supabase.from("projects").update({ image_url: imageUrl }).eq("id", id));
   }
   return id;
@@ -139,9 +150,9 @@ export async function createProject(uid, fields, imageBlob) {
 export async function updateProject(project, fields, { imageBlob = null, removeImage = false } = {}) {
   const row = toRow(fields, PROJECT_FIELDS);
   if (imageBlob) {
-    row.image_url = await uploadImage("project_images", project.id, imageBlob);
+    row.image_url = await uploadFile("project_images", project.id, imageBlob);
   } else if (removeImage && project.imageUrl) {
-    await deleteImage("project_images", project.id);
+    await deleteFile("project_images", project.id);
     row.image_url = "";
   }
   unwrap(await supabase.from("projects").update(row).eq("id", project.id));
@@ -149,17 +160,17 @@ export async function updateProject(project, fields, { imageBlob = null, removeI
 
 export async function deleteProject(project) {
   // Remove the image while the row still exists — Storage policies check ownership through it.
-  if (project.imageUrl) await deleteImage("project_images", project.id);
+  if (project.imageUrl) await deleteFile("project_images", project.id);
   unwrap(await supabase.from("projects").delete().eq("id", project.id));
 }
 
 // ---------- Storage helpers ----------
 
-async function uploadImage(bucket, path, blob) {
+async function uploadFile(bucket, path, blob, contentType = blob.type || "image/jpeg") {
   unwrap(
     await supabase.storage.from(bucket).upload(path, blob, {
       upsert: true,
-      contentType: blob.type || "image/jpeg",
+      contentType,
       cacheControl: "3600",
     })
   );
@@ -168,6 +179,6 @@ async function uploadImage(bucket, path, blob) {
   return `${publicUrl}?v=${Date.now()}`;
 }
 
-async function deleteImage(bucket, path) {
+async function deleteFile(bucket, path) {
   unwrap(await supabase.storage.from(bucket).remove([path]));
 }

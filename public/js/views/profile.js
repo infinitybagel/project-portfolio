@@ -23,6 +23,7 @@ export async function render(root, ctx) {
   const github = safeUrl(profile.githubUrl);
   const linkedin = safeUrl(profile.linkedinUrl);
   const youtube = safeUrl(profile.youtubeUrl);
+  const resume = safeUrl(profile.resumeUrl);
   const joined = formatDate(profile.createdAt);
 
   root.innerHTML = `
@@ -34,6 +35,7 @@ export async function render(root, ctx) {
         <h1>${esc(profile.displayName)}</h1>
         ${profile.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ""}
         <div class="link-row">
+          ${resume ? `<a class="btn btn-primary btn-sm" href="${esc(resume)}" target="_blank" rel="noopener noreferrer">${icons.file(15)}Resume</a>` : ""}
           ${github ? `<a class="btn btn-secondary btn-sm" href="${esc(github)}" target="_blank" rel="noopener noreferrer">${icons.github(15)}GitHub</a>` : ""}
           ${linkedin ? `<a class="btn btn-secondary btn-sm" href="${esc(linkedin)}" target="_blank" rel="noopener noreferrer">${icons.linkedin(15)}LinkedIn</a>` : ""}
           ${youtube ? `<a class="btn btn-secondary btn-sm" href="${esc(youtube)}" target="_blank" rel="noopener noreferrer">${icons.youtube(15)}YouTube</a>` : ""}

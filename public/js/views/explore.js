@@ -11,6 +11,8 @@ export async function render(root, ctx) {
   const owners = new Map(users.map((u) => [u.id, u]));
   const byId = new Map(projects.map((p) => [p.id, p]));
   const disciplines = [...new Set(users.map((u) => u.discipline).filter(Boolean))].sort();
+  // Distinct project tags, case-insensitive ("IoT" and "iot" count once).
+  const topicCount = new Set(projects.flatMap((p) => p.tags.map((t) => t.toLowerCase()))).size;
 
   let activeTag = ctx.query.get("tag") || "";
   let tab = ctx.query.get("tab") === "projects" || activeTag ? "projects" : "students";
@@ -33,7 +35,7 @@ export async function render(root, ctx) {
       <dl class="hero-stats">
         <div><dt>Students</dt><dd>${users.length}</dd></div>
         <div><dt>Projects</dt><dd>${projects.length}${projects.length >= 100 ? "+" : ""}</dd></div>
-        <div><dt>Disciplines</dt><dd>${disciplines.length}</dd></div>
+        <div><dt>Project topics</dt><dd>${topicCount}</dd></div>
       </dl>
     </section>
 

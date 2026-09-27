@@ -56,6 +56,12 @@ alter table public.projects drop constraint if exists projects_youtube_link_chec
 alter table public.projects add constraint projects_youtube_link_check
   check (youtube_link = '' or (youtube_link ~* '^https?://' and char_length(youtube_link) <= 500));
 
+-- Resume (PDF) on profiles: public URL of resumes/{uid}.
+alter table public.profiles add column if not exists resume_url text not null default '';
+alter table public.profiles drop constraint if exists profiles_resume_url_check;
+alter table public.profiles add constraint profiles_resume_url_check
+  check (resume_url = '' or (resume_url ~* '^https?://' and char_length(resume_url) <= 2048));
+
 -- Topic tags (e.g. {Embedded Systems, Robotics, IoT}): up to 8, each 1–40 chars.
 create or replace function public.valid_tags(tags text[])
 returns boolean
@@ -227,12 +233,14 @@ create policy "Users can delete their own projects"
 -- Storage buckets
 --   profile_pictures/{uid}        user headshots
 --   project_images/{projectId}    hardware photos, CAD renders, screenshots
+--   resumes/{uid}                 resume PDFs
 -- ---------------------------------------------------------------------
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
   ('profile_pictures', 'profile_pictures', true, 5242880, array['image/*']),
-  ('project_images',   'project_images',   true, 5242880, array['image/*'])
+  ('project_images',   'project_images',   true, 5242880, array['image/*']),
+  ('resumes',          'resumes',          true, 10485760, array['application/pdf'])
 on conflict (id) do update
   set public = excluded.public,
       file_size_limit = excluded.file_size_limit,
@@ -259,6 +267,28 @@ drop policy if exists "Users can delete their own profile picture" on storage.ob
 create policy "Users can delete their own profile picture"
   on storage.objects for delete to authenticated
   using (bucket_id = 'profile_pictures' and name = (select auth.uid())::text);
+
+-- Resumes: the object name must be the uploader's user id.
+drop policy if exists "Resumes are publicly readable" on storage.objects;
+create policy "Resumes are publicly readable"
+  on storage.objects for select to anon, authenticated
+  using (bucket_id = 'resumes');
+
+drop policy if exists "Users can upload their own resume" on storage.objects;
+create policy "Users can upload their own resume"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'resumes' and name = (select auth.uid())::text);
+
+drop policy if exists "Users can replace their own resume" on storage.objects;
+create policy "Users can replace their own resume"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'resumes' and name = (select auth.uid())::text)
+  with check (bucket_id = 'resumes' and name = (select auth.uid())::text);
+
+drop policy if exists "Users can delete their own resume" on storage.objects;
+create policy "Users can delete their own resume"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'resumes' and name = (select auth.uid())::text);
 
 -- Project images: the object name must be a project id the uploader owns.
 -- The app always inserts the project row before uploading its image.

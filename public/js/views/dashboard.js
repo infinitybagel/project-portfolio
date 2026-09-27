@@ -2,11 +2,13 @@
 import {
   createProject,
   deleteProject,
+  deleteResume,
   getUserProfile,
   listProjectsByUser,
   saveUserProfile,
   updateProject,
   uploadProfilePicture,
+  uploadResume,
 } from "../data.js";
 import { avatarHtml, bindProjectOpen, emptyState, icons, projectCardHtml } from "../components.js";
 import { state } from "../state.js";
@@ -16,11 +18,13 @@ import {
   closeModal,
   confirmDialog,
   esc,
+  formatBytes,
   friendlyError,
   normalizeUrl,
   normalizeYouTubeUrl,
   openModal,
   prepareImage,
+  preparePdf,
   readForm,
   safeUrl,
   setBusy,
@@ -45,6 +49,7 @@ export async function render(root, ctx) {
     githubUrl: "",
     linkedinUrl: "",
     youtubeUrl: "",
+    resumeUrl: "",
   };
 
   const firstName = (profile.displayName || "there").split(" ")[0];
@@ -114,6 +119,12 @@ export async function render(root, ctx) {
             <input id="p-youtube" name="youtubeUrl" inputmode="url" placeholder="youtube.com/@yourchannel" value="${esc(profile.youtubeUrl)}">
           </div>
         </div>
+        <div class="field">
+          <span class="label" id="resume-label">Resume (PDF)</span>
+          <div class="file-row" id="resume-row" aria-labelledby="resume-label"></div>
+          <input type="file" id="resume-input" accept="application/pdf,.pdf" hidden>
+          <p class="hint">Up to 10 MB. Anyone who visits your profile can view and download it, so leave out details like your home address or phone number if you don't want them public.</p>
+        </div>
         <p class="form-error" id="profile-error" role="alert" hidden></p>
         <div class="form-actions">
           <button class="btn btn-primary" type="submit">Save profile</button>
@@ -136,7 +147,65 @@ export async function render(root, ctx) {
   const avatarInput = root.querySelector("#avatar-input");
   const avatarPreview = root.querySelector("#avatar-preview");
   const bioCount = root.querySelector("#bio-count");
+  const resumeRow = root.querySelector("#resume-row");
+  const resumeInput = root.querySelector("#resume-input");
   let pendingAvatar = null;
+  let pendingResume = null; // File chosen but not yet uploaded
+  let removeResume = false; // user clicked Remove on the saved resume
+
+  // Shows the saved / staged / empty resume state with matching actions.
+  function drawResume() {
+    const saved = safeUrl(profile.resumeUrl);
+    let status;
+    if (pendingResume) {
+      status = `<span class="file-name">${esc(pendingResume.name)}</span>
+                <span class="hint">${formatBytes(pendingResume.size)} · uploads when you save</span>`;
+    } else if (saved && !removeResume) {
+      status = `<a class="file-name" href="${esc(saved)}" target="_blank" rel="noopener noreferrer">View current resume</a>`;
+    } else {
+      status = `<span class="hint">${removeResume ? "Resume will be removed when you save" : "No resume uploaded"}</span>`;
+    }
+    const hasFile = pendingResume || (saved && !removeResume);
+    resumeRow.innerHTML = `
+      <span class="file-icon" aria-hidden="true">${icons.file(18)}</span>
+      <div class="file-status">${status}</div>
+      <div class="file-actions">
+        <button type="button" class="btn btn-secondary btn-sm" data-resume="choose">${hasFile ? "Replace" : "Upload PDF"}</button>
+        ${
+          pendingResume
+            ? `<button type="button" class="btn btn-ghost btn-sm" data-resume="cancel">Cancel</button>`
+            : hasFile
+              ? `<button type="button" class="btn btn-ghost btn-sm btn-danger-text" data-resume="remove">Remove</button>`
+              : removeResume
+                ? `<button type="button" class="btn btn-ghost btn-sm" data-resume="undo">Undo</button>`
+                : ""
+        }
+      </div>`;
+  }
+  drawResume();
+
+  resumeRow.addEventListener("click", (e) => {
+    const action = e.target.closest("[data-resume]")?.dataset.resume;
+    if (action === "choose") resumeInput.click();
+    else if (action === "cancel") pendingResume = null;
+    else if (action === "remove") removeResume = true;
+    else if (action === "undo") removeResume = false;
+    if (action && action !== "choose") drawResume();
+  });
+  resumeInput.addEventListener("change", async () => {
+    const file = resumeInput.files[0];
+    resumeInput.value = "";
+    if (!file) return;
+    try {
+      pendingResume = await preparePdf(file);
+      removeResume = false;
+      showFormError(profileError, "");
+      drawResume();
+      toast("Resume ready — click Save profile to upload it.");
+    } catch (err) {
+      showFormError(profileError, err.message);
+    }
+  });
 
   const updateBioCount = () => (bioCount.textContent = `${form.bio.value.length}/1000`);
   // Grow with the content (no inner scrollbar) so the box mirrors the public bio's height too.
@@ -203,9 +272,18 @@ export async function render(root, ctx) {
         data.profilePictureUrl = await uploadProfilePicture(uid, pendingAvatar);
         pendingAvatar = null;
       }
+      if (pendingResume) {
+        data.resumeUrl = await uploadResume(uid, pendingResume);
+      } else if (removeResume && profile.resumeUrl) {
+        await deleteResume(uid);
+        data.resumeUrl = "";
+      }
       await saveUserProfile(uid, data);
       profileExists = true;
       Object.assign(profile, data);
+      pendingResume = null;
+      removeResume = false;
+      drawResume();
       form.githubUrl.value = githubUrl;
       form.linkedinUrl.value = linkedinUrl;
       form.youtubeUrl.value = youtubeUrl;

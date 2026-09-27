@@ -157,8 +157,8 @@ export function friendlyError(err) {
   if (code === "42501" || code === "403" || /row-level security|permission denied|unauthorized/i.test(msg))
     return "You don't have permission to do that. Try logging out and back in.";
   if (code === "23514") return "One of the fields is too long or not in a valid format.";
-  if (/exceeded the maximum allowed size|payload too large/i.test(msg)) return "Image must be under 5 MB.";
-  if (/mime type/i.test(msg)) return "Please upload an image file.";
+  if (/exceeded the maximum allowed size|payload too large/i.test(msg)) return "That file is too large to upload.";
+  if (/mime type/i.test(msg)) return "That file type isn't allowed here.";
   if (/failed to fetch|networkerror|network request failed/i.test(msg))
     return "Network error — check your connection and try again.";
   return msg || "Something went wrong. Please try again.";
@@ -272,4 +272,26 @@ export async function prepareImage(file, maxDim = 1600) {
   if (!blob) throw new Error("That image couldn't be processed.");
   if (blob.size > MAX_UPLOAD_BYTES) throw new Error("Image must be under 5 MB.");
   return blob;
+}
+
+// ---------- PDFs ----------
+
+export const MAX_RESUME_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Validates a resume upload: must really be a PDF (checked by its "%PDF-" header, not just
+ * the file name) and at most 10 MB. Returns the file, or throws an Error with a user-facing message.
+ */
+export async function preparePdf(file) {
+  const looksLikePdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  if (!looksLikePdf) throw new Error("Please choose a PDF file.");
+  if (file.size > MAX_RESUME_BYTES) throw new Error("Your resume must be 10 MB or smaller.");
+  if (file.size === 0) throw new Error("That file is empty.");
+  const header = new TextDecoder().decode(await file.slice(0, 5).arrayBuffer());
+  if (header !== "%PDF-") throw new Error("That file isn't a valid PDF. Try exporting it again as PDF.");
+  return file;
+}
+
+export function formatBytes(bytes) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

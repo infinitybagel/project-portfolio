@@ -7,12 +7,13 @@ Blueprint is a portfolio website for engineering students in every discipline, i
 ### For visitors
 - **Explore the directory:** browse every student's profile card, or switch to the **Projects** feed to see recent work from everyone.
 - **Search and filter:** search names, bios, project titles, descriptions and tags. Filter by engineering discipline. Click any project tag (for example **Robotics**) to show only projects with that tag. Filtered views have shareable links, such as `#/explore?tab=projects&tag=Robotics`.
-- **View profiles:** each student's page shows their photo, discipline, bio, contact links (GitHub, LinkedIn, YouTube, email) and a grid of their projects.
+- **View profiles:** each student's page shows their photo, discipline, bio, resume (PDF), contact links (GitHub, LinkedIn, YouTube, email) and a grid of their projects.
 - **View projects:** opening a project shows its full description, tags and links. If the project has a YouTube video, it plays right on the page.
 
 ### For students (after signing up)
 - **Account:** sign up with email and password (with email confirmation), log in and out, and reset a forgotten password by email.
-- **Profile:** set your name, discipline and bio, upload a profile photo, and add GitHub, LinkedIn and YouTube channel links.
+- **Profile:** set your name, discipline and bio, upload a profile photo, and add GitHub, LinkedIn and YouTube channel links. The bio editor wraps text exactly as your public profile will.
+- **Resume:** upload a PDF resume (up to 10 MB), then replace or remove it at any time. Visitors see a **Resume** button on your profile that opens it.
 - **Projects:** add, edit and delete projects. Each project has:
   - a title and a description or methodology
   - **up to 8 topic tags**, for example *Embedded Systems*, *Robotics* and *IoT*. You can pick from suggestions or type your own.
@@ -22,7 +23,7 @@ Blueprint is a portfolio website for engineering students in every discipline, i
 ### Security
 - Anyone can view profiles and projects, but only the owner can change their own profile, projects and images. The database enforces this with Row Level Security, not just the website.
 - The database also checks field lengths, tag limits and that links start with `http(s)`. It prevents users from changing timestamps, a profile's email, or who owns a project.
-- Image uploads must be images under 5 MB.
+- Image uploads must be images under 5 MB. Resumes must be real PDFs (the file header is checked) under 10 MB.
 
 ## Technologies used
 
@@ -32,7 +33,7 @@ Blueprint is a portfolio website for engineering students in every discipline, i
 | Styling | Hand-written CSS with light and dark themes and a responsive, mobile-friendly layout. Fonts are [Inter](https://fonts.google.com/specimen/Inter) and [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono). |
 | Authentication | [Supabase Auth](https://supabase.com/docs/guides/auth): email and password, email confirmation, password reset (PKCE flow) |
 | Database | [Supabase Postgres](https://supabase.com/docs/guides/database) with Row Level Security policies, check constraints and triggers |
-| File storage | [Supabase Storage](https://supabase.com/docs/guides/storage): public buckets for profile photos and project images |
+| File storage | [Supabase Storage](https://supabase.com/docs/guides/storage): public buckets for profile photos, project images and resume PDFs |
 | Client library | [`@supabase/supabase-js`](https://github.com/supabase/supabase-js) v2, loaded from the jsDelivr CDN |
 | Video | YouTube embeds via `youtube-nocookie.com` |
 | Hosting | Any static host. The repo includes a [Netlify](https://www.netlify.com/) config (`netlify.toml`). |
@@ -58,9 +59,9 @@ public/                    ← the website (this folder is what gets deployed)
 
 ### Data model
 
-- **`profiles`** (one row per user): `display_name`, `email`, `discipline`, `bio`, `profile_picture_url`, `github_url`, `linkedin_url`, `youtube_url`, timestamps
+- **`profiles`** (one row per user): `display_name`, `email`, `discipline`, `bio`, `profile_picture_url`, `github_url`, `linkedin_url`, `youtube_url`, `resume_url`, timestamps
 - **`projects`**: `user_id`, `title`, `tags` (text array), `description`, `image_url`, `project_link`, `github_link`, `cad_link`, `report_link`, `youtube_link`, timestamps
-- **Storage buckets:** `profile_pictures/{userId}` and `project_images/{projectId}`
+- **Storage buckets:** `profile_pictures/{userId}`, `project_images/{projectId}` and `resumes/{userId}`
 
 ## Setup instructions
 
@@ -68,7 +69,7 @@ public/                    ← the website (this folder is what gets deployed)
 1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
 2. Open **SQL Editor**, paste the entire contents of [`supabase/schema.sql`](supabase/schema.sql) and click **Run**. This creates the tables, security policies and storage buckets.
 
-> **Already set up an earlier version?** Run `supabase/schema.sql` again. It's safe to re-run, keeps all existing data, and adds the new columns (YouTube links and tags). Each project's old single category becomes its first tag. **Run it before using the updated site**, because the new code expects those columns.
+> **Already set up an earlier version?** Run `supabase/schema.sql` again. It's safe to re-run, keeps all existing data, and adds the newer columns and buckets (YouTube links, tags and resumes). Each project's old single category becomes its first tag. **Run it before using the updated site**, because the new code expects those columns.
 
 ### 2. Connect the website to Supabase
 1. In Supabase, go to **Project Settings → API** (or click **Connect**). Copy the **Project URL** (`https://xxxx.supabase.co`) and the **anon / publishable** key.
