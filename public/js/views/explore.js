@@ -12,7 +12,8 @@ export async function render(root, ctx) {
   const byId = new Map(projects.map((p) => [p.id, p]));
   const disciplines = [...new Set(users.map((u) => u.discipline).filter(Boolean))].sort();
 
-  let tab = ctx.query.get("tab") === "projects" ? "projects" : "students";
+  let activeTag = ctx.query.get("tag") || "";
+  let tab = ctx.query.get("tab") === "projects" || activeTag ? "projects" : "students";
   let search = "";
   let discipline = "";
 
@@ -54,9 +55,20 @@ export async function render(root, ctx) {
           </div>`
         : ""
     }
+    <div id="tag-filter"></div>
     <div id="results" aria-live="polite"></div>`;
 
   const results = root.querySelector("#results");
+  const tagFilter = root.querySelector("#tag-filter");
+
+  const syncUrl = () => {
+    const params = new URLSearchParams();
+    if (tab === "projects") params.set("tab", "projects");
+    if (tab === "projects" && activeTag) params.set("tag", activeTag);
+    const qs = params.toString();
+    history.replaceState(null, "", `#/explore${qs ? `?${qs}` : ""}`);
+  };
+  const hasTag = (p) => !activeTag || p.tags.some((t) => t.toLowerCase() === activeTag.toLowerCase());
 
   const matches = (text) => !search || text.toLowerCase().includes(search);
 
@@ -69,6 +81,12 @@ export async function render(root, ctx) {
     root.querySelectorAll("[data-discipline]").forEach((b) =>
       b.classList.toggle("active", b.dataset.discipline === discipline)
     );
+
+    tagFilter.innerHTML =
+      tab === "projects" && activeTag
+        ? `<div class="active-filter">Tagged <span class="tag">${esc(activeTag)}</span>
+             <button type="button" class="text-btn" data-clear-tag>Clear</button></div>`
+        : "";
 
     if (tab === "students") {
       const list = users.filter(
@@ -90,16 +108,17 @@ export async function render(root, ctx) {
         const owner = owners.get(p.userId);
         return (
           (!discipline || owner?.discipline === discipline) &&
-          matches(`${p.title} ${p.discipline} ${p.description} ${owner?.displayName ?? ""}`)
+          hasTag(p) &&
+          matches(`${p.title} ${p.tags.join(" ")} ${p.description} ${owner?.displayName ?? ""}`)
         );
       });
       results.innerHTML = list.length
         ? `<div class="grid grid-projects">${list
-            .map((p) => projectCardHtml(p, { owner: owners.get(p.userId) }))
+            .map((p) => projectCardHtml(p, { owner: owners.get(p.userId), tagFilter: true }))
             .join("")}</div>`
         : emptyState({
             title: projects.length ? "No projects match" : "No projects yet",
-            body: projects.length ? "Try a different search or discipline." : "Projects will appear here as students add them.",
+            body: projects.length ? "Try a different search, discipline or tag." : "Projects will appear here as students add them.",
           });
     }
   }
@@ -108,7 +127,7 @@ export async function render(root, ctx) {
     const b = e.target.closest("[data-tab]");
     if (!b) return;
     tab = b.dataset.tab;
-    history.replaceState(null, "", tab === "projects" ? "#/explore?tab=projects" : "#/explore");
+    syncUrl();
     draw();
   });
   root.querySelector(".chips")?.addEventListener("click", (e) => {
@@ -119,6 +138,20 @@ export async function render(root, ctx) {
   });
   root.querySelector("#search").addEventListener("input", (e) => {
     search = e.target.value.trim().toLowerCase();
+    draw();
+  });
+  results.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tag]");
+    if (!b) return;
+    activeTag = b.dataset.tag;
+    syncUrl();
+    draw();
+    tagFilter.scrollIntoView({ block: "nearest" });
+  });
+  tagFilter.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-clear-tag]")) return;
+    activeTag = "";
+    syncUrl();
     draw();
   });
   bindProjectOpen(results, (id) => byId.get(id), (p) => owners.get(p.userId));

@@ -16,22 +16,56 @@ export const DISCIPLINES = [
   "Other",
 ];
 
-export const PROJECT_CATEGORIES = [
-  "CAD Design",
-  "Embedded Systems",
-  "Structural Analysis",
-  "Circuit / PCB Design",
-  "Robotics",
-  "Controls",
-  "Simulation / FEA",
-  "CFD",
-  "Machine Learning",
-  "Software / Web App",
+// Suggestions offered in the project tag editor (any custom tag is allowed too).
+export const TAG_SUGGESTIONS = [
+  "3D Printing",
   "Biomechanics",
-  "Materials Testing",
-  "Research",
+  "CAD Design",
   "Capstone / Senior Design",
+  "CFD",
+  "Circuit / PCB Design",
+  "Computer Vision",
+  "Controls",
+  "Data Analysis",
+  "Embedded Systems",
+  "IoT",
+  "Machine Learning",
+  "Manufacturing",
+  "Materials Testing",
+  "Power Electronics",
+  "Renewable Energy",
+  "Research",
+  "Robotics",
+  "Signal Processing",
+  "Simulation / FEA",
+  "Software / Web App",
+  "Structural Analysis",
+  "Sustainability",
 ];
+
+export const MAX_TAGS = 8;
+export const MAX_TAG_LENGTH = 40;
+
+const CANONICAL_TAGS = new Map(TAG_SUGGESTIONS.map((t) => [t.toLowerCase(), t]));
+
+/**
+ * Trims, collapses whitespace, drops empties and case-insensitive duplicates, caps count/length.
+ * Tags matching a suggestion take its spelling ("iot" → "IoT") so tags stay consistent across users.
+ */
+export function normalizeTags(tags) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of tags) {
+    const cleaned = String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TAG_LENGTH);
+    const key = cleaned.toLowerCase();
+    const tag = CANONICAL_TAGS.get(key) ?? cleaned;
+    if (!tag || seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+    if (out.length === MAX_TAGS) break;
+  }
+  return out;
+}
 
 const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 export const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ESC[c]);
@@ -53,6 +87,32 @@ export function normalizeUrl(value) {
   const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
   const url = safeUrl(withScheme);
   return url && url.includes(".") ? url : null;
+}
+
+const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be"]);
+
+/** Like normalizeUrl, but the link must point at YouTube. Returns "" (empty), a URL, or null (invalid). */
+export function normalizeYouTubeUrl(value) {
+  const url = normalizeUrl(value);
+  if (!url) return url;
+  return YOUTUBE_HOSTS.has(new URL(url).hostname.toLowerCase()) ? url : null;
+}
+
+/** Extracts the 11-character video id from a YouTube watch/short/embed/live/youtu.be link, or "". */
+export function youTubeVideoId(value) {
+  const url = safeUrl(value);
+  if (!url) return "";
+  const u = new URL(url);
+  const host = u.hostname.toLowerCase();
+  if (!YOUTUBE_HOSTS.has(host)) return "";
+  let id = "";
+  if (host.endsWith("youtu.be")) id = u.pathname.split("/")[1] || "";
+  else if (u.pathname === "/watch") id = u.searchParams.get("v") || "";
+  else {
+    const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([^/?#]+)/);
+    id = m ? m[1] : "";
+  }
+  return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
 }
 
 export function formatDate(value) {

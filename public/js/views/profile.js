@@ -22,6 +22,7 @@ export async function render(root, ctx) {
   const isOwn = state.user?.id === uid;
   const github = safeUrl(profile.githubUrl);
   const linkedin = safeUrl(profile.linkedinUrl);
+  const youtube = safeUrl(profile.youtubeUrl);
   const joined = formatDate(profile.createdAt);
 
   root.innerHTML = `
@@ -35,6 +36,7 @@ export async function render(root, ctx) {
         <div class="link-row">
           ${github ? `<a class="btn btn-secondary btn-sm" href="${esc(github)}" target="_blank" rel="noopener noreferrer">${icons.github(15)}GitHub</a>` : ""}
           ${linkedin ? `<a class="btn btn-secondary btn-sm" href="${esc(linkedin)}" target="_blank" rel="noopener noreferrer">${icons.linkedin(15)}LinkedIn</a>` : ""}
+          ${youtube ? `<a class="btn btn-secondary btn-sm" href="${esc(youtube)}" target="_blank" rel="noopener noreferrer">${icons.youtube(15)}YouTube</a>` : ""}
           ${profile.email ? `<a class="btn btn-secondary btn-sm" href="mailto:${esc(profile.email)}">${icons.mail(15)}Email</a>` : ""}
           ${isOwn ? `<a class="btn btn-primary btn-sm" href="#/dashboard">${icons.edit(15)}Edit portfolio</a>` : ""}
         </div>

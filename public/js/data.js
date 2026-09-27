@@ -3,9 +3,9 @@
 import { supabase } from "./supabase.js";
 
 const PROFILE_COLUMNS =
-  "id, display_name, email, discipline, bio, profile_picture_url, github_url, linkedin_url, created_at";
+  "id, display_name, email, discipline, bio, profile_picture_url, github_url, linkedin_url, youtube_url, created_at";
 const PROJECT_COLUMNS =
-  "id, user_id, title, discipline, description, image_url, project_link, github_link, cad_link, report_link, created_at";
+  "id, user_id, title, tags, description, image_url, project_link, github_link, cad_link, report_link, youtube_link, created_at";
 
 const PROFILE_FIELDS = {
   displayName: "display_name",
@@ -15,15 +15,17 @@ const PROFILE_FIELDS = {
   profilePictureUrl: "profile_picture_url",
   githubUrl: "github_url",
   linkedinUrl: "linkedin_url",
+  youtubeUrl: "youtube_url",
 };
 const PROJECT_FIELDS = {
   title: "title",
-  discipline: "discipline",
+  tags: "tags",
   description: "description",
   projectLink: "project_link",
   githubLink: "github_link",
   cadLink: "cad_link",
   reportLink: "report_link",
+  youtubeLink: "youtube_link",
 };
 
 const toProfile = (r) => ({
@@ -35,6 +37,7 @@ const toProfile = (r) => ({
   profilePictureUrl: r.profile_picture_url,
   githubUrl: r.github_url,
   linkedinUrl: r.linkedin_url,
+  youtubeUrl: r.youtube_url ?? "",
   createdAt: r.created_at,
 });
 
@@ -42,13 +45,14 @@ const toProject = (r) => ({
   id: r.id,
   userId: r.user_id,
   title: r.title,
-  discipline: r.discipline,
+  tags: r.tags ?? [],
   description: r.description,
   imageUrl: r.image_url,
   projectLink: r.project_link,
   githubLink: r.github_link,
   cadLink: r.cad_link,
   reportLink: r.report_link,
+  youtubeLink: r.youtube_link ?? "",
   createdAt: r.created_at,
 });
 

@@ -1,5 +1,5 @@
 // Reusable HTML fragments: icons, avatars, project cards, project detail modal.
-import { esc, formatDate, openModal, safeUrl } from "./ui.js";
+import { esc, formatDate, openModal, safeUrl, youTubeVideoId } from "./ui.js";
 
 const svg = (paths, size = 16) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
@@ -25,6 +25,10 @@ export const icons = {
   image: (s) =>
     svg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>', s),
   arrow: (s) => svg('<path d="M5 12h14M12 5l7 7-7 7"/>', s),
+  youtube: (s) =>
+    svg('<path d="M2.5 17a24.1 24.1 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.6 49.6 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.1 24.1 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.6 49.6 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/>', s),
+  play: (s) =>
+    `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.1v13.8a1 1 0 0 0 1.5.9l10.9-6.9a1 1 0 0 0 0-1.7L9.5 4.2A1 1 0 0 0 8 5.1z"/></svg>`,
 };
 
 // ---------- Avatars ----------
@@ -57,6 +61,7 @@ const PROJECT_LINKS = [
   ["githubLink", "GitHub", icons.github],
   ["cadLink", "CAD files", icons.cube],
   ["reportLink", "Report", icons.file],
+  ["youtubeLink", "YouTube", icons.youtube],
 ];
 
 export function projectLinksHtml(project, { compact = false } = {}) {
@@ -70,19 +75,47 @@ export function projectLinksHtml(project, { compact = false } = {}) {
   return links ? `<div class="${compact ? "icon-links" : "link-row"}">${links}</div>` : "";
 }
 
+// ---------- Tags ----------
+
+/**
+ * Renders a project's topic tags.
+ * @param max        show at most this many, then a "+N" counter
+ * @param clickable  render tags as filter buttons (data-tag) instead of plain labels
+ */
+export function tagsHtml(tags = [], { max = Infinity, clickable = false } = {}) {
+  if (!tags.length) return "";
+  const shown = tags.slice(0, max);
+  const items = shown.map((t) =>
+    clickable
+      ? `<li><button type="button" class="tag tag-btn" data-tag="${esc(t)}" title="Show projects tagged ${esc(t)}">${esc(t)}</button></li>`
+      : `<li><span class="tag">${esc(t)}</span></li>`
+  );
+  if (tags.length > shown.length) {
+    const rest = tags.slice(shown.length).join(", ");
+    items.push(`<li><span class="tag tag-more" title="${esc(rest)}">+${tags.length - shown.length}</span></li>`);
+  }
+  return `<ul class="tag-list" aria-label="Tags">${items.join("")}</ul>`;
+}
+
 // ---------- Project cards ----------
 
 function mediaHtml(project) {
   const url = safeUrl(project.imageUrl);
   if (url) return `<img src="${esc(url)}" alt="" loading="lazy">`;
-  return `<div class="media-placeholder"><span>${esc(project.discipline || "Project")}</span></div>`;
+  const videoId = youTubeVideoId(project.youtubeLink);
+  if (videoId) {
+    return `<img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg" alt="" loading="lazy">
+            <span class="play-badge">${icons.play(18)}</span>`;
+  }
+  return `<div class="media-placeholder"><span>${esc(project.tags?.[0] || "Project")}</span></div>`;
 }
 
 /**
- * @param owner   optional profile shown as a byline (used in the Explore feed)
- * @param actions when true, show Edit/Delete buttons instead of links (dashboard)
+ * @param owner     optional profile shown as a byline (used in the Explore feed)
+ * @param actions   when true, show Edit/Delete buttons instead of links (dashboard)
+ * @param tagFilter when true, tags are buttons that filter the Explore feed
  */
-export function projectCardHtml(project, { owner = null, actions = false } = {}) {
+export function projectCardHtml(project, { owner = null, actions = false, tagFilter = false } = {}) {
   const id = esc(project.id);
   return `
     <article class="project-card">
@@ -90,7 +123,7 @@ export function projectCardHtml(project, { owner = null, actions = false } = {})
         ${mediaHtml(project)}
       </button>
       <div class="project-body">
-        ${project.discipline ? `<span class="tag">${esc(project.discipline)}</span>` : ""}
+        ${tagsHtml(project.tags, { max: 3, clickable: tagFilter })}
         <h3><button type="button" class="title-btn" data-open="${id}">${esc(project.title)}</button></h3>
         ${project.description ? `<p class="clamp-3 muted">${esc(project.description)}</p>` : ""}
         <div class="project-foot">
@@ -113,19 +146,31 @@ export function projectCardHtml(project, { owner = null, actions = false } = {})
 }
 
 export function openProjectDetail(project, owner = null) {
-  const url = safeUrl(project.imageUrl);
+  const imageUrl = safeUrl(project.imageUrl);
+  const videoId = youTubeVideoId(project.youtubeLink);
   const date = formatDate(project.createdAt);
+  // A YouTube demo takes the header slot; otherwise show the project image.
+  const header = videoId
+    ? `<div class="detail-video">
+         <iframe src="https://www.youtube-nocookie.com/embed/${videoId}" title="${esc(project.title)} — video"
+           allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+           referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
+       </div>`
+    : imageUrl
+      ? `<img class="detail-image" src="${esc(imageUrl)}" alt="${esc(project.title)}">`
+      : "";
   openModal(
     `<button class="modal-close" type="button" data-close aria-label="Close">${icons.x(18)}</button>
-     ${url ? `<img class="detail-image" src="${esc(url)}" alt="${esc(project.title)}">` : ""}
+     ${header}
      <div class="detail-body">
-       ${project.discipline ? `<span class="tag">${esc(project.discipline)}</span>` : ""}
+       ${tagsHtml(project.tags)}
        <h2>${esc(project.title)}</h2>
        <div class="detail-meta">
          ${owner ? `<a class="byline" href="#/profile/${esc(owner.id)}" data-close>${avatarHtml(owner, 24)}<span>${esc(owner.displayName)}</span></a>` : ""}
          ${date ? `<span class="muted">${esc(date)}</span>` : ""}
        </div>
        ${project.description ? `<p class="detail-desc">${esc(project.description)}</p>` : ""}
+       ${videoId && imageUrl ? `<img class="detail-image detail-image-inline" src="${esc(imageUrl)}" alt="${esc(project.title)}">` : ""}
        ${projectLinksHtml(project)}
      </div>`,
     { size: "lg", label: project.title }

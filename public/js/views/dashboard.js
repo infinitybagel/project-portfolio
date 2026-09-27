@@ -10,14 +10,15 @@ import {
 } from "../data.js";
 import { avatarHtml, bindProjectOpen, emptyState, icons, projectCardHtml } from "../components.js";
 import { state } from "../state.js";
+import { createTagInput } from "../tag-input.js";
 import {
   DISCIPLINES,
-  PROJECT_CATEGORIES,
   closeModal,
   confirmDialog,
   esc,
   friendlyError,
   normalizeUrl,
+  normalizeYouTubeUrl,
   openModal,
   prepareImage,
   readForm,
@@ -43,6 +44,7 @@ export async function render(root, ctx) {
     profilePictureUrl: "",
     githubUrl: "",
     linkedinUrl: "",
+    youtubeUrl: "",
   };
 
   const firstName = (profile.displayName || "there").split(" ")[0];
@@ -105,6 +107,10 @@ export async function render(root, ctx) {
             <label for="p-linkedin">LinkedIn</label>
             <input id="p-linkedin" name="linkedinUrl" inputmode="url" placeholder="linkedin.com/in/username" value="${esc(profile.linkedinUrl)}">
           </div>
+          <div class="field">
+            <label for="p-youtube">YouTube channel</label>
+            <input id="p-youtube" name="youtubeUrl" inputmode="url" placeholder="youtube.com/@yourchannel" value="${esc(profile.youtubeUrl)}">
+          </div>
           <p class="form-error" id="profile-error" role="alert" hidden></p>
           <button class="btn btn-primary btn-block" type="submit">Save profile</button>
         </form>
@@ -155,6 +161,8 @@ export async function render(root, ctx) {
     const linkedinUrl = normalizeUrl(values.linkedinUrl);
     if (githubUrl === null) return showFormError(profileError, "The GitHub link isn't a valid URL.");
     if (linkedinUrl === null) return showFormError(profileError, "The LinkedIn link isn't a valid URL.");
+    const youtubeUrl = normalizeYouTubeUrl(values.youtubeUrl);
+    if (youtubeUrl === null) return showFormError(profileError, "The YouTube link must be a youtube.com or youtu.be URL.");
 
     showFormError(profileError, "");
     const submit = form.querySelector('[type="submit"]');
@@ -167,6 +175,7 @@ export async function render(root, ctx) {
         bio: values.bio,
         githubUrl,
         linkedinUrl,
+        youtubeUrl,
       };
       if (pendingAvatar) {
         data.profilePictureUrl = await uploadProfilePicture(uid, pendingAvatar);
@@ -177,6 +186,7 @@ export async function render(root, ctx) {
       Object.assign(profile, data);
       form.githubUrl.value = githubUrl;
       form.linkedinUrl.value = linkedinUrl;
+      form.youtubeUrl.value = youtubeUrl;
       root.querySelector(".notice")?.remove();
       toast("Profile saved.", "success");
     } catch (err) {
@@ -269,9 +279,8 @@ export async function render(root, ctx) {
            <input id="f-title" name="title" maxlength="120" required value="${esc(p.title)}" placeholder="e.g. 6-DOF robotic arm">
          </div>
          <div class="field">
-           <label for="f-cat">Discipline / category</label>
-           <input id="f-cat" name="discipline" maxlength="80" list="cat-list" value="${esc(p.discipline)}" placeholder="e.g. CAD Design, Embedded Systems">
-           <datalist id="cat-list">${PROJECT_CATEGORIES.map((c) => `<option value="${esc(c)}">`).join("")}</datalist>
+           <label for="f-tags">Topic tags</label>
+           <div id="tag-editor"></div>
          </div>
          <div class="field">
            <div class="label-row">
@@ -302,6 +311,11 @@ export async function render(root, ctx) {
              <div class="field"><label for="f-cad">CAD repository</label><input id="f-cad" name="cadLink" inputmode="url" value="${esc(p.cadLink)}" placeholder="Onshape, GrabCAD, Drive…"></div>
              <div class="field"><label for="f-report">Report</label><input id="f-report" name="reportLink" inputmode="url" value="${esc(p.reportLink)}" placeholder="PDF or doc link"></div>
            </div>
+           <div class="field">
+             <label for="f-youtube">YouTube video</label>
+             <input id="f-youtube" name="youtubeLink" inputmode="url" value="${esc(p.youtubeLink)}" placeholder="youtube.com/watch?v=… or youtu.be/…">
+             <p class="hint">Demo or walkthrough. Video links play right inside the project page.</p>
+           </div>
          </fieldset>
          <p class="form-error" id="project-error" role="alert" hidden></p>
          <div class="modal-actions">
@@ -318,6 +332,7 @@ export async function render(root, ctx) {
     const imgInput = d.querySelector("#img-input");
     const imgBtn = d.querySelector("#img-btn");
     const imgRemove = d.querySelector("#img-remove");
+    const tagEditor = createTagInput(d.querySelector("#tag-editor"), p.tags || []);
     const descCount = d.querySelector("#desc-count");
     const updateDescCount = () => (descCount.textContent = `${pf.description.value.length}/5000`);
     pf.description.addEventListener("input", updateDescCount);
@@ -353,13 +368,16 @@ export async function render(root, ctx) {
       const v = readForm(pf);
       if (!v.title) return showFormError(errEl, "Please give your project a title.");
 
-      const fields = { title: v.title, discipline: v.discipline, description: v.description };
+      const fields = { title: v.title, tags: tagEditor.getTags(), description: v.description };
       const linkLabels = { projectLink: "Project page", githubLink: "GitHub", cadLink: "CAD repository", reportLink: "Report" };
       for (const [key, label] of Object.entries(linkLabels)) {
         const url = normalizeUrl(v[key]);
         if (url === null) return showFormError(errEl, `The ${label} link isn't a valid URL.`);
         fields[key] = url;
       }
+      const youtubeLink = normalizeYouTubeUrl(v.youtubeLink);
+      if (youtubeLink === null) return showFormError(errEl, "The YouTube link must be a youtube.com or youtu.be URL.");
+      fields.youtubeLink = youtubeLink;
 
       showFormError(errEl, "");
       const submit = pf.querySelector('[type="submit"]');

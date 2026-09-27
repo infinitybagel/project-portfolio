@@ -1,7 +1,8 @@
 -- =====================================================================
 -- Blueprint — Supabase schema
--- Run this whole file once in the Supabase dashboard → SQL Editor.
--- It is idempotent: re-running it is safe.
+-- Run this whole file in the Supabase dashboard → SQL Editor.
+-- It is idempotent: use it both for a fresh project and to upgrade an
+-- existing one (re-running it keeps all existing data).
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -26,7 +27,6 @@ create table if not exists public.projects (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null default auth.uid() references public.profiles (id) on delete cascade,
   title        text not null check (char_length(title) between 1 and 120),
-  discipline   text not null default '' check (char_length(discipline) <= 80),
   description  text not null default '' check (char_length(description) <= 5000),
   image_url    text not null default '' check (char_length(image_url) <= 2048),
   project_link text not null default '' check (project_link = '' or (project_link ~* '^https?://' and char_length(project_link) <= 500)),
@@ -40,6 +40,53 @@ create table if not exists public.projects (
 create index if not exists profiles_created_at_idx on public.profiles (created_at desc);
 create index if not exists projects_created_at_idx on public.projects (created_at desc);
 create index if not exists projects_user_id_created_at_idx on public.projects (user_id, created_at desc);
+
+-- ---------------------------------------------------------------------
+-- Columns added after the first release (added here so upgrades work)
+-- ---------------------------------------------------------------------
+
+-- YouTube channel on profiles, YouTube video/demo on projects.
+alter table public.profiles add column if not exists youtube_url text not null default '';
+alter table public.profiles drop constraint if exists profiles_youtube_url_check;
+alter table public.profiles add constraint profiles_youtube_url_check
+  check (youtube_url = '' or (youtube_url ~* '^https?://' and char_length(youtube_url) <= 500));
+
+alter table public.projects add column if not exists youtube_link text not null default '';
+alter table public.projects drop constraint if exists projects_youtube_link_check;
+alter table public.projects add constraint projects_youtube_link_check
+  check (youtube_link = '' or (youtube_link ~* '^https?://' and char_length(youtube_link) <= 500));
+
+-- Topic tags (e.g. {Embedded Systems, Robotics, IoT}): up to 8, each 1–40 chars.
+create or replace function public.valid_tags(tags text[])
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select cardinality(tags) <= 8
+    and coalesce((select bool_and(char_length(t) between 1 and 40) from unnest(tags) as t), true);
+$$;
+
+alter table public.projects add column if not exists tags text[] not null default '{}';
+alter table public.projects drop constraint if exists projects_tags_check;
+alter table public.projects add constraint projects_tags_check check (public.valid_tags(tags));
+create index if not exists projects_tags_idx on public.projects using gin (tags);
+
+-- Upgrade: projects used to have a single "discipline" category. Move it
+-- into tags, then drop the old column.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'projects' and column_name = 'discipline'
+  ) then
+    update public.projects
+      set tags = array[left(trim(discipline), 40)]
+      where trim(discipline) <> '' and cardinality(tags) = 0;
+    alter table public.projects drop column discipline;
+  end if;
+end;
+$$;
 
 -- ---------------------------------------------------------------------
 -- Triggers
@@ -259,3 +306,6 @@ create policy "Users can delete images for their own projects"
       where p.id::text = objects.name and p.user_id = (select auth.uid())
     )
   );
+
+-- Make the API pick up column changes immediately.
+notify pgrst, 'reload schema';

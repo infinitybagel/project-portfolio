@@ -1,75 +1,114 @@
 # Blueprint: Engineering Student Portfolios
 
-A portfolio web app for engineering students in any discipline. Students register, build a profile, and publish projects. Anyone can browse the public directory.
+Blueprint is a portfolio website for engineering students in every discipline, including mechanical, electrical, civil, software, biomedical and aerospace. Students create an account, build a profile, and publish their projects. Anyone can browse the directory to see what other students are building.
 
-Built with plain HTML, CSS and JavaScript ES modules. The backend is **Supabase**: Auth for accounts, Postgres with Row Level Security for data, and Storage for images. The Supabase library loads from a CDN, so there's no build step and no npm install.
+## What the website does
 
-## Features
+### For visitors
+- **Explore the directory:** browse every student's profile card, or switch to the **Projects** feed to see recent work from everyone.
+- **Search and filter:** search names, bios, project titles, descriptions and tags. Filter by engineering discipline. Click any project tag (for example **Robotics**) to show only projects with that tag. Filtered views have shareable links, such as `#/explore?tab=projects&tag=Robotics`.
+- **View profiles:** each student's page shows their photo, discipline, bio, contact links (GitHub, LinkedIn, YouTube, email) and a grid of their projects.
+- **View projects:** opening a project shows its full description, tags and links. If the project has a YouTube video, it plays right on the page.
 
-| Area | What's included |
+### For students (after signing up)
+- **Account:** sign up with email and password (with email confirmation), log in and out, and reset a forgotten password by email.
+- **Profile:** set your name, discipline and bio, upload a profile photo, and add GitHub, LinkedIn and YouTube channel links.
+- **Projects:** add, edit and delete projects. Each project has:
+  - a title and a description or methodology
+  - **up to 8 topic tags**, for example *Embedded Systems*, *Robotics* and *IoT*. You can pick from suggestions or type your own.
+  - an image (hardware photo, CAD render or screenshot). Images are resized in the browser before upload.
+  - optional links: project page or demo, GitHub repository, CAD files, report, and a **YouTube video**. If there's no image, the video's thumbnail is used on the card.
+
+### Security
+- Anyone can view profiles and projects, but only the owner can change their own profile, projects and images. The database enforces this with Row Level Security, not just the website.
+- The database also checks field lengths, tag limits and that links start with `http(s)`. It prevents users from changing timestamps, a profile's email, or who owns a project.
+- Image uploads must be images under 5 MB.
+
+## Technologies used
+
+| Layer | Technology |
 |---|---|
-| **Auth** | Email/password sign-up (works with or without email confirmation), log in, log out, and password reset by email with a page to set a new password. Sessions persist across visits. The dashboard route is protected |
-| **Directory** (`#/` or `#/explore`) | Grid of all students, a Projects feed, text search, and filter chips for each discipline |
-| **Profile** (`#/profile/:uid`) | Photo, discipline, bio, GitHub/LinkedIn/email links, project grid, and a detail view for each project |
-| **Dashboard** (`#/dashboard`) | Edit profile and upload a photo. Create, edit and delete projects in a modal, with image upload, category, description and four link types |
-| **Security** | RLS policies: anyone can read, only the owner can write. Database check constraints limit field lengths and require http(s) links. Triggers stop clients from changing timestamps, ownership or email. Storage buckets only accept images under 5 MB |
+| Frontend | HTML, CSS and JavaScript ES modules, with no framework and no build step. A small hash-based router handles navigation. |
+| Styling | Hand-written CSS with light and dark themes and a responsive, mobile-friendly layout. Fonts are [Inter](https://fonts.google.com/specimen/Inter) and [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono). |
+| Authentication | [Supabase Auth](https://supabase.com/docs/guides/auth): email and password, email confirmation, password reset (PKCE flow) |
+| Database | [Supabase Postgres](https://supabase.com/docs/guides/database) with Row Level Security policies, check constraints and triggers |
+| File storage | [Supabase Storage](https://supabase.com/docs/guides/storage): public buckets for profile photos and project images |
+| Client library | [`@supabase/supabase-js`](https://github.com/supabase/supabase-js) v2, loaded from the jsDelivr CDN |
+| Video | YouTube embeds via `youtube-nocookie.com` |
+| Hosting | Any static host. The repo includes a [Netlify](https://www.netlify.com/) config (`netlify.toml`). |
 
-Images are resized in the browser before upload: profile photos to 512 px and project images to 1600 px.
-
-## Project structure
+### Project structure
 
 ```
-supabase/schema.sql        Tables, triggers, RLS policies, storage buckets and policies
-public/
+netlify.toml               Netlify settings (publish folder, cache headers)
+supabase/schema.sql        Tables, triggers, security policies, storage buckets
+public/                    ← the website (this folder is what gets deployed)
   index.html               App shell
-  css/styles.css           Styles (light + dark)
+  css/styles.css           Styles
   js/
-    supabase-config.js     ← paste your project URL + anon key here
-    supabase.js            Client initialization
-    app.js                 Router, nav, auth listener
-    data.js                Database/Storage CRUD (maps rows to camelCase)
-    components.js          Cards, avatars, project detail modal
-    ui.js                  Helpers (escaping, toasts, modals, image resize, errors)
-    views/                 explore, profile, login, register, reset-password, dashboard
+    supabase-config.js     Your Supabase project URL + public key
+    supabase.js            Supabase client setup
+    app.js                 Router, navigation, login state
+    data.js                Reading/writing profiles, projects and images
+    components.js          Project cards, tags, avatars, project detail view
+    tag-input.js           Tag editor used in the project form
+    ui.js                  Shared helpers (links, tags, YouTube, toasts, dialogs, images)
+    views/                 Pages: explore, profile, login, register, reset-password, dashboard
 ```
 
-## Data model
+### Data model
 
-**`public.profiles`** (one row per user, `id` = `auth.users.id`): `display_name`, `email`, `discipline`, `bio`, `profile_picture_url`, `github_url`, `linkedin_url`, `created_at`, `updated_at`
+- **`profiles`** (one row per user): `display_name`, `email`, `discipline`, `bio`, `profile_picture_url`, `github_url`, `linkedin_url`, `youtube_url`, timestamps
+- **`projects`**: `user_id`, `title`, `tags` (text array), `description`, `image_url`, `project_link`, `github_link`, `cad_link`, `report_link`, `youtube_link`, timestamps
+- **Storage buckets:** `profile_pictures/{userId}` and `project_images/{projectId}`
 
-**`public.projects`**: `id`, `user_id` → profiles, `title`, `discipline` (category, e.g. "CAD Design"), `description`, `image_url`, `project_link`, `github_link`, `cad_link`, `report_link`, `created_at`, `updated_at`
+## Setup instructions
 
-**Storage buckets** (public read): `profile_pictures/{uid}` and `project_images/{projectId}`
+### 1. Create the Supabase backend
+1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
+2. Open **SQL Editor**, paste the entire contents of [`supabase/schema.sql`](supabase/schema.sql) and click **Run**. This creates the tables, security policies and storage buckets.
 
-A database trigger creates each user's profile row at sign-up, using the name and discipline from the registration form.
+> **Already set up an earlier version?** Run `supabase/schema.sql` again. It's safe to re-run, keeps all existing data, and adds the new columns (YouTube links and tags). Each project's old single category becomes its first tag. **Run it before using the updated site**, because the new code expects those columns.
 
-## Setup
+### 2. Connect the website to Supabase
+1. In Supabase, go to **Project Settings → API** (or click **Connect**). Copy the **Project URL** (`https://xxxx.supabase.co`) and the **anon / publishable** key.
+2. Paste them into [`public/js/supabase-config.js`](public/js/supabase-config.js):
+   ```js
+   export const supabaseConfig = {
+     url: "https://xxxx.supabase.co",
+     anonKey: "sb_publishable_... or eyJ...",
+   };
+   ```
+   This key is meant to be public, because the database security policies protect the data. **Never** put the `service_role` / secret key in this project.
 
-1. **Create a project** at <https://supabase.com/dashboard>.
-2. **Run the schema**: open **SQL Editor**, paste all of [`supabase/schema.sql`](supabase/schema.sql) and click **Run**. It's safe to re-run.
-3. **Auth settings**: go to **Authentication → URL Configuration**:
-   - Set **Site URL** to where the app is hosted (for local development, `http://localhost:5173/`).
-   - Add every URL you'll serve the app from to **Redirect URLs** (for example `http://localhost:5173/**` and your production URL). Confirmation and password-reset emails send users back here.
-   - Email confirmation is **on** by default. New users see a "Check your email" screen and are signed in when they click the link. To skip that step while developing, turn off **Confirm email** under **Authentication → Providers → Email**.
-4. **Keys**: copy the **Project URL** and the **anon public** key from **Project Settings → API** into [`public/js/supabase-config.js`](public/js/supabase-config.js). The anon key is meant to be public, because RLS is what protects the data. Never put the `service_role` key in this app.
+### 3. Configure authentication URLs
+In Supabase, go to **Authentication → URL Configuration**:
+- **Site URL:** where the site runs. Use `http://localhost:5173` for local testing, and change it to your Netlify URL once deployed.
+- **Redirect URLs:** add every address the site is served from, for example `http://localhost:5173/**` and `https://your-site.netlify.app/**`. Confirmation and password-reset emails send people back to these.
 
-## Run locally
-
-ES modules must be served over HTTP. Opening `index.html` directly from disk won't work.
+### 4. Run locally
+The site must be served over HTTP. Opening `index.html` directly from disk won't work. With Python installed:
 
 ```bash
 python -m http.server 5173 --directory public
 ```
 
-Then open <http://localhost:5173>.
+Then open <http://localhost:5173>. Any static file server works (for example `npx serve public`).
 
-## Deploy
+### 5. Deploy to Netlify
+1. Push this repository to GitHub.
+2. In Netlify, choose **Add new site → Import an existing project** and pick the repository. `netlify.toml` already sets the publish directory to `public` with no build command, so leave the build settings empty.
+3. After the first deploy, copy the site URL (for example `https://your-site.netlify.app`). In Supabase **Authentication → URL Configuration**, set it as the **Site URL** and add `https://your-site.netlify.app/**` to **Redirect URLs**.
+4. Every push to `main` redeploys automatically.
 
-The `public/` folder is a plain static site. Upload it to any static host, such as Netlify, Vercel, Cloudflare Pages, GitHub Pages or Firebase Hosting. Then add the production URL to Supabase's **Redirect URLs** (and make it the **Site URL**).
+### 6. Before inviting testers
+- **Email limits:** Supabase's built-in email sender is limited to a few emails per hour. That isn't enough for several people signing up. Either:
+  - configure your own SMTP provider (such as Resend, SendGrid or Mailgun) under **Authentication → Emails → SMTP Settings**, or
+  - for a short test, turn off **Confirm email** under **Authentication → Providers → Email**, so accounts work immediately without an email.
+- **Public profiles:** each student's email appears on their public profile as a contact link. Let testers know, or see the note below to hide it.
 
 ## Notes
 
-- Routes use hash URLs (`#/profile/abc123`), so no server rewrite rules are needed. Auth email links use the PKCE flow (`?code=…`), so they don't collide with the hash router.
-- Supabase's built-in email sender is rate-limited to a few emails per hour. For real use, configure custom SMTP under **Authentication → Emails → SMTP Settings**.
-- Profile emails are public, because they appear as the "Email" contact link. To make them private, remove `email` from `PROFILE_COLUMNS` in `data.js`, or revoke column access in SQL.
-- The directory loads all profiles and the latest 100 projects, then filters them in the browser. That's fine for a class or club. For thousands of users, switch to paginated queries (`.range()`).
+- URLs use a `#` (for example `/#/profile/abc123`), so the site works on any static host without rewrite rules.
+- To make emails private, remove `email` from `PROFILE_COLUMNS` in `public/js/data.js`.
+- The directory loads all profiles and the latest 100 projects, then filters them in the browser. That's fine for a class or club. For thousands of users, switch to paginated queries.

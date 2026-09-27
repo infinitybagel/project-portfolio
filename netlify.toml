@@ -1,0 +1,21 @@
+# Netlify configuration — the site is plain static files in /public (no build step).
+[build]
+  publish = "public"
+
+# Always revalidate app code so testers get new versions right after a deploy.
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"
