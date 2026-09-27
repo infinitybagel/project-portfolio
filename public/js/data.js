@@ -97,13 +97,71 @@ export async function uploadProfilePicture(uid, blob) {
   return uploadFile("profile_pictures", uid, blob);
 }
 
-/** Uploads (or replaces) the user's resume PDF and returns its public URL. */
-export async function uploadResume(uid, file) {
-  return uploadFile("resumes", uid, file, "application/pdf");
+// ---------- Resumes ----------
+// Stored as resumes/{uid}/{original file name}.pdf so links end in the real file name.
+// (Resumes uploaded before this change live at resumes/{uid} and keep working.)
+
+const RESUME_PREFIX = "/storage/v1/object/public/resumes/";
+
+/** "My Résumé (final) v2.PDF" → "My_Resume_final_v2.pdf" — URL-safe, keeps the name recognizable. */
+export function resumeFileName(name) {
+  const base = String(name ?? "")
+    .replace(/\.pdf$/i, "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // strip accents
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 80);
+  return `${base || "resume"}.pdf`;
 }
 
-export async function deleteResume(uid) {
-  await deleteFile("resumes", uid);
+/** Storage path ("{uid}/Name.pdf" or legacy "{uid}") from a stored resume URL, or "". */
+function resumePath(url) {
+  try {
+    const { pathname } = new URL(url);
+    const i = pathname.indexOf(RESUME_PREFIX);
+    return i === -1 ? "" : decodeURIComponent(pathname.slice(i + RESUME_PREFIX.length));
+  } catch {
+    return "";
+  }
+}
+
+/** File name shown to people ("Aaron_Arnold_Resume.pdf"), or "" for legacy uploads without one. */
+export function resumeDisplayName(url) {
+  const path = resumePath(url);
+  return path.includes("/") ? path.split("/").pop() : "";
+}
+
+/**
+ * Link to show for a stored resume URL. On the deployed site this is a short same-domain
+ * link (e.g. https://your-site.netlify.app/resumes/{uid}/Name.pdf) that Netlify proxies to
+ * Supabase Storage (see netlify.toml). Local dev servers have no proxy, so they use the
+ * direct Supabase URL.
+ */
+export function resumeLink(url) {
+  const path = resumePath(url);
+  if (!path) return url;
+  const isLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+  if (isLocal) return url.split("?")[0];
+  return `${location.origin}/resumes/${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+/** Uploads (or replaces) the user's resume PDF, removes the previous file, returns its public URL. */
+export async function uploadResume(uid, file, previousUrl = "") {
+  const path = `${uid}/${resumeFileName(file.name)}`;
+  // max-age=0: same-name re-uploads must show up immediately, and the link carries no version query.
+  const url = await uploadFile("resumes", path, file, { contentType: "application/pdf", cacheControl: "0", version: false });
+  const oldPath = resumePath(previousUrl);
+  if (oldPath && oldPath !== path) {
+    await deleteFile("resumes", oldPath).catch((err) => console.warn("Old resume not removed", err));
+  }
+  return url;
+}
+
+export async function deleteResume(currentUrl) {
+  const path = resumePath(currentUrl);
+  if (path) await deleteFile("resumes", path);
 }
 
 // ---------- Projects ----------
@@ -168,17 +226,16 @@ export async function deleteProject(project) {
 
 // ---------- Storage helpers ----------
 
-async function uploadFile(bucket, path, blob, contentType = blob.type || "image/jpeg") {
-  unwrap(
-    await supabase.storage.from(bucket).upload(path, blob, {
-      upsert: true,
-      contentType,
-      cacheControl: "3600",
-    })
-  );
+async function uploadFile(
+  bucket,
+  path,
+  blob,
+  { contentType = blob.type || "image/jpeg", cacheControl = "3600", version = true } = {}
+) {
+  unwrap(await supabase.storage.from(bucket).upload(path, blob, { upsert: true, contentType, cacheControl }));
   const { publicUrl } = supabase.storage.from(bucket).getPublicUrl(path).data;
-  // The path is reused when an image is replaced, so version the URL to bust caches.
-  return `${publicUrl}?v=${Date.now()}`;
+  // Image paths are reused when an image is replaced, so version the URL to bust caches.
+  return version ? `${publicUrl}?v=${Date.now()}` : publicUrl;
 }
 
 async function deleteFile(bucket, path) {

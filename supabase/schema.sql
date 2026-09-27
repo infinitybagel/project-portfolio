@@ -273,7 +273,20 @@ create policy "Users can delete their own profile picture"
   on storage.objects for delete to authenticated
   using (bucket_id = 'profile_pictures' and name = (select auth.uid())::text);
 
--- Resumes: the object name must be the uploader's user id.
+-- Resumes: stored as {uid}/{file name}.pdf (legacy uploads: {uid}). Users may only
+-- write inside their own folder / their own legacy object.
+create or replace function public.owns_resume_object(object_name text)
+returns boolean
+language sql
+stable
+set search_path = ''
+as $$
+  select auth.uid() is not null and (
+    object_name = auth.uid()::text
+    or (storage.foldername(object_name))[1] = auth.uid()::text
+  );
+$$;
+
 drop policy if exists "Resumes are publicly readable" on storage.objects;
 create policy "Resumes are publicly readable"
   on storage.objects for select to anon, authenticated
@@ -282,18 +295,18 @@ create policy "Resumes are publicly readable"
 drop policy if exists "Users can upload their own resume" on storage.objects;
 create policy "Users can upload their own resume"
   on storage.objects for insert to authenticated
-  with check (bucket_id = 'resumes' and name = (select auth.uid())::text);
+  with check (bucket_id = 'resumes' and public.owns_resume_object(name));
 
 drop policy if exists "Users can replace their own resume" on storage.objects;
 create policy "Users can replace their own resume"
   on storage.objects for update to authenticated
-  using (bucket_id = 'resumes' and name = (select auth.uid())::text)
-  with check (bucket_id = 'resumes' and name = (select auth.uid())::text);
+  using (bucket_id = 'resumes' and public.owns_resume_object(name))
+  with check (bucket_id = 'resumes' and public.owns_resume_object(name));
 
 drop policy if exists "Users can delete their own resume" on storage.objects;
 create policy "Users can delete their own resume"
   on storage.objects for delete to authenticated
-  using (bucket_id = 'resumes' and name = (select auth.uid())::text);
+  using (bucket_id = 'resumes' and public.owns_resume_object(name));
 
 -- Project images: the object name must be a project id the uploader owns.
 -- The app always inserts the project row before uploading its image.

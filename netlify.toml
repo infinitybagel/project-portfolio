@@ -2,6 +2,15 @@
 [build]
   publish = "public"
 
+# Short resume links on this domain: /resumes/{uid}/{file}.pdf is served from
+# Supabase Storage behind the scenes (status 200 = proxy, the URL stays the same).
+# If you move to a different Supabase project, update the project URL here too.
+[[redirects]]
+  from = "/resumes/*"
+  to = "https://eubpiktztnlpvbmyterx.supabase.co/storage/v1/object/public/resumes/:splat"
+  status = 200
+  force = true
+
 # Always revalidate app code so testers get new versions right after a deploy.
 [[headers]]
   for = "/js/*"

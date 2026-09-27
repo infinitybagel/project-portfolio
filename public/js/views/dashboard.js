@@ -3,6 +3,8 @@ import {
   createProject,
   deleteProject,
   deleteResume,
+  resumeDisplayName,
+  resumeLink,
   getUserProfile,
   listProjectsByUser,
   saveUserProfile,
@@ -166,7 +168,9 @@ export async function render(root, ctx) {
       status = `<span class="file-name">${esc(pendingResume.name)}</span>
                 <span class="hint">${formatBytes(pendingResume.size)} · uploads when you save</span>`;
     } else if (saved && !removeResume) {
-      status = `<a class="file-name" href="${esc(saved)}" target="_blank" rel="noopener noreferrer">View current resume</a>`;
+      const name = resumeDisplayName(saved);
+      status = `<a class="file-name" href="${esc(resumeLink(saved))}" target="_blank" rel="noopener noreferrer">${esc(name || "View current resume")}</a>
+                ${name ? `<span class="hint">Current resume · click to open</span>` : ""}`;
     } else {
       status = `<span class="hint">${removeResume ? "Resume will be removed when you save" : "No resume uploaded"}</span>`;
     }
@@ -279,9 +283,9 @@ export async function render(root, ctx) {
         pendingAvatar = null;
       }
       if (pendingResume) {
-        data.resumeUrl = await uploadResume(uid, pendingResume);
+        data.resumeUrl = await uploadResume(uid, pendingResume, profile.resumeUrl);
       } else if (removeResume && profile.resumeUrl) {
-        await deleteResume(uid);
+        await deleteResume(profile.resumeUrl);
         data.resumeUrl = "";
       }
       await saveUserProfile(uid, data);

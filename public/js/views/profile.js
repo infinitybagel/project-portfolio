@@ -1,5 +1,5 @@
 // Public student profile: "/profile/:uid"
-import { getUserProfile, listProjectsByUser } from "../data.js";
+import { getUserProfile, listProjectsByUser, resumeLink } from "../data.js";
 import { avatarHtml, bindProjectOpen, emptyState, icons, projectCardHtml } from "../components.js";
 import { state } from "../state.js";
 import { esc, formatDate, safeUrl } from "../ui.js";
@@ -23,7 +23,7 @@ export async function render(root, ctx) {
   const github = safeUrl(profile.githubUrl);
   const linkedin = safeUrl(profile.linkedinUrl);
   const youtube = safeUrl(profile.youtubeUrl);
-  const resume = safeUrl(profile.resumeUrl);
+  const resume = safeUrl(profile.resumeUrl) && resumeLink(profile.resumeUrl);
   const joined = formatDate(profile.createdAt);
 
   root.innerHTML = `

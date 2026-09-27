@@ -13,7 +13,7 @@ Blueprint is a portfolio website for engineering students in every discipline, i
 ### For students (after signing up)
 - **Account:** sign up with email and password (with email confirmation), log in and out, and reset a forgotten password by email.
 - **Profile:** set your name, college or university, discipline and bio, upload a profile photo, and add GitHub, LinkedIn and YouTube channel links. The bio editor wraps text exactly as your public profile will.
-- **Resume:** upload a PDF resume (up to 10 MB), then replace or remove it at any time. Visitors see a **Resume** button on your profile that opens it.
+- **Resume:** upload a PDF resume (up to 10 MB), then replace or remove it at any time. Visitors see a **Resume** button on your profile that opens it at a short link that keeps your file name, for example `https://your-site.netlify.app/resumes/{userId}/Jane_Doe_Resume.pdf`.
 - **Projects:** add, edit and delete projects. Each project has:
   - a title and a description or methodology
   - **up to 8 topic tags**, for example *Embedded Systems*, *Robotics* and *IoT*. You can pick from suggestions or type your own.
@@ -61,7 +61,7 @@ public/                    ← the website (this folder is what gets deployed)
 
 - **`profiles`** (one row per user): `display_name`, `email`, `discipline`, `school`, `bio`, `profile_picture_url`, `github_url`, `linkedin_url`, `youtube_url`, `resume_url`, timestamps
 - **`projects`**: `user_id`, `title`, `tags` (text array), `description`, `image_url`, `project_link`, `github_link`, `cad_link`, `report_link`, `youtube_link`, timestamps
-- **Storage buckets:** `profile_pictures/{userId}`, `project_images/{projectId}` and `resumes/{userId}`
+- **Storage buckets:** `profile_pictures/{userId}`, `project_images/{projectId}` and `resumes/{userId}/{file name}.pdf`
 
 ## Setup instructions
 
@@ -99,6 +99,7 @@ Then open <http://localhost:5173>. Any static file server works (for example `np
 ### 5. Deploy to Netlify
 1. Push this repository to GitHub.
 2. In Netlify, choose **Add new site → Import an existing project** and pick the repository. `netlify.toml` already sets the publish directory to `public` with no build command, so leave the build settings empty.
+   `netlify.toml` also contains your Supabase project URL for the short `/resumes/...` links. If you use a different Supabase project, update the `to = "https://…supabase.co/…"` line.
 3. After the first deploy, copy the site URL (for example `https://your-site.netlify.app`). In Supabase **Authentication → URL Configuration**, set it as the **Site URL** and add `https://your-site.netlify.app/**` to **Redirect URLs**.
 4. Every push to `main` redeploys automatically.
 
