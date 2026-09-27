@@ -2,11 +2,13 @@
 
 Blueprint is a portfolio website for engineering students in every discipline, including mechanical, electrical, civil, software, biomedical and aerospace. Students create an account, build a profile, and publish their projects. Anyone can browse the directory to see what other students are building.
 
+**Live site:** [engineering-students-portfolio.netlify.app](https://engineering-students-portfolio.netlify.app/#/explore). It's hosted on Netlify and redeploys automatically on every push to `main`.
+
 ## What the website does
 
 ### For visitors
 - **Explore the directory:** browse every student's profile card, or switch to the **Projects** feed to see recent work from everyone.
-- **Search and filter:** search names, schools, bios, project titles, descriptions and tags. Filter by engineering discipline. Click any project tag (for example **Robotics**) to show only projects with that tag. Filtered views have shareable links, such as `#/explore?tab=projects&tag=Robotics`.
+- **Search and filter:** search names, schools, bios, project titles, descriptions and tags. Filter by engineering discipline. Click any project tag (for example **Robotics**) to show only projects with that tag. Filtered views have shareable links, such as [`#/explore?tab=projects&tag=Robotics`](https://engineering-students-portfolio.netlify.app/#/explore?tab=projects&tag=Robotics).
 - **View profiles:** each student's page shows their photo, discipline, college or university, bio, resume (PDF), contact links (GitHub, LinkedIn, YouTube, email) and a grid of their projects.
 - **View projects:** opening a project shows its full description, tags and links. If the project has a YouTube video, it plays right on the page.
 
