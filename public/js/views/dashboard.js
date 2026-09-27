@@ -67,18 +67,16 @@ export async function render(root, ctx) {
         : `<div class="notice">Your profile isn't published yet. Fill in your details and save to appear in the directory.</div>`
     }
 
-    <div class="dash-grid">
-      <section class="card panel" aria-labelledby="profile-heading">
+    <section class="card profile-header profile-editor" aria-labelledby="profile-heading">
+      <div class="avatar-column">
+        <div id="avatar-preview">${avatarHtml(profile, 112)}</div>
+        <button type="button" class="btn btn-secondary btn-sm" id="avatar-btn">${icons.image(15)}Upload photo</button>
+        <input type="file" id="avatar-input" accept="image/*" hidden>
+        <p class="hint">JPG, PNG or WebP, up to 5 MB.</p>
+      </div>
+      <form id="profile-form" class="form profile-info" novalidate>
         <h2 id="profile-heading">Your profile</h2>
-        <form id="profile-form" class="form" novalidate>
-          <div class="avatar-edit">
-            <div id="avatar-preview">${avatarHtml(profile, 84)}</div>
-            <div>
-              <button type="button" class="btn btn-secondary btn-sm" id="avatar-btn">${icons.image(15)}Upload photo</button>
-              <input type="file" id="avatar-input" accept="image/*" hidden>
-              <p class="hint">JPG, PNG or WebP, up to 5 MB.</p>
-            </div>
-          </div>
+        <div class="field-row">
           <div class="field">
             <label for="p-name">Full name</label>
             <input id="p-name" name="displayName" maxlength="80" value="${esc(profile.displayName)}" required>
@@ -92,13 +90,17 @@ export async function render(root, ctx) {
                 .join("")}
             </select>
           </div>
-          <div class="field">
-            <div class="label-row">
-              <label for="p-bio">Short bio</label>
-              <span class="hint" id="bio-count"></span>
-            </div>
-            <textarea id="p-bio" name="bio" rows="4" maxlength="1000" placeholder="Year, school, interests, what you're looking for…">${esc(profile.bio)}</textarea>
+        </div>
+        <div class="field bio-field">
+          <div class="label-row">
+            <label for="p-bio">Short bio</label>
+            <span class="hint" id="bio-count"></span>
           </div>
+          <!-- Same text width, font and line breaks as .profile-bio on the public profile -->
+          <textarea id="p-bio" class="bio-editor" name="bio" rows="3" maxlength="1000" placeholder="Year, school, interests, what you're looking for…">${esc(profile.bio)}</textarea>
+          <p class="hint">Line breaks and wrapping appear exactly like this on your public profile.</p>
+        </div>
+        <div class="field-row field-row-3">
           <div class="field">
             <label for="p-github">GitHub</label>
             <input id="p-github" name="githubUrl" inputmode="url" placeholder="github.com/username" value="${esc(profile.githubUrl)}">
@@ -111,19 +113,21 @@ export async function render(root, ctx) {
             <label for="p-youtube">YouTube channel</label>
             <input id="p-youtube" name="youtubeUrl" inputmode="url" placeholder="youtube.com/@yourchannel" value="${esc(profile.youtubeUrl)}">
           </div>
-          <p class="form-error" id="profile-error" role="alert" hidden></p>
-          <button class="btn btn-primary btn-block" type="submit">Save profile</button>
-        </form>
-      </section>
-
-      <section aria-labelledby="projects-heading">
-        <div class="section-head">
-          <h2 id="projects-heading">Your projects <span class="count" id="project-count"></span></h2>
-          <button type="button" class="btn btn-primary" id="new-project">${icons.plus(16)}New project</button>
         </div>
-        <div id="project-list"></div>
-      </section>
-    </div>`;
+        <p class="form-error" id="profile-error" role="alert" hidden></p>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Save profile</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="dash-projects" aria-labelledby="projects-heading">
+      <div class="section-head">
+        <h2 id="projects-heading">Your projects <span class="count" id="project-count"></span></h2>
+        <button type="button" class="btn btn-primary" id="new-project">${icons.plus(16)}New project</button>
+      </div>
+      <div id="project-list"></div>
+    </section>`;
 
   // ---------- Profile form ----------
 
@@ -135,8 +139,26 @@ export async function render(root, ctx) {
   let pendingAvatar = null;
 
   const updateBioCount = () => (bioCount.textContent = `${form.bio.value.length}/1000`);
-  form.bio.addEventListener("input", updateBioCount);
+  // Grow with the content (no inner scrollbar) so the box mirrors the public bio's height too.
+  const fitBio = () => {
+    form.bio.style.height = "auto";
+    form.bio.style.height = `${form.bio.scrollHeight + form.bio.offsetHeight - form.bio.clientHeight}px`;
+  };
+  form.bio.addEventListener("input", () => {
+    updateBioCount();
+    fitBio();
+  });
   updateBioCount();
+  fitBio();
+  // Re-fit when the column width changes (window resize) since the text re-wraps.
+  let lastWidth = 0;
+  new ResizeObserver(([entry]) => {
+    const width = Math.round(entry.contentRect.width);
+    if (width !== lastWidth) {
+      lastWidth = width;
+      fitBio();
+    }
+  }).observe(form);
 
   root.querySelector("#avatar-btn").addEventListener("click", () => avatarInput.click());
   avatarInput.addEventListener("change", async () => {
@@ -146,7 +168,7 @@ export async function render(root, ctx) {
     try {
       pendingAvatar = await prepareImage(file, 512);
       const url = URL.createObjectURL(pendingAvatar);
-      avatarPreview.innerHTML = `<img class="avatar" src="${url}" alt="New profile photo preview" style="width:84px;height:84px">`;
+      avatarPreview.innerHTML = `<img class="avatar" src="${url}" alt="New profile photo preview" style="width:112px;height:112px">`;
       toast("Photo ready — click Save profile to upload it.");
     } catch (err) {
       showFormError(profileError, err.message);

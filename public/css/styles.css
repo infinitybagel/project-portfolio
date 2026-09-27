@@ -774,7 +774,14 @@ main:focus { outline: none; }
   margin-bottom: 36px;
 }
 .profile-info { display: grid; gap: 12px; justify-items: start; min-width: 0; }
-.profile-bio { max-width: 70ch; white-space: pre-line; }
+/* The dashboard's .bio-editor mirrors these metrics so the bio wraps identically in both places. */
+.profile-bio {
+  max-width: 70ch;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
 
 @media (max-width: 600px) {
   .profile-header { flex-direction: column; padding: 24px 20px; gap: 18px; }
@@ -899,20 +906,49 @@ textarea:focus {
   font-weight: 500;
 }
 
-.dash-grid {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 28px;
-  align-items: start;
+/* Profile editor: same box model as the public .profile-header */
+.profile-editor { margin-bottom: 36px; }
+.profile-editor .profile-info {
+  flex: 1;
+  justify-items: stretch;
+  gap: 16px;
 }
-@media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
+.profile-editor h2 { font-size: 1.2rem; }
 
-.panel { padding: 24px; position: sticky; top: 86px; }
-.panel h2 { margin-bottom: 18px; }
-@media (max-width: 900px) { .panel { position: static; } }
+.avatar-column {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: 112px;
+  flex-shrink: 0;
+}
+.avatar-column .hint { text-align: center; }
+@media (max-width: 600px) {
+  .avatar-column { width: auto; justify-items: start; }
+  .avatar-column .hint { text-align: left; }
+}
 
-.avatar-edit { display: flex; align-items: center; gap: 16px; }
-.avatar-edit .hint { margin-top: 6px; }
+/* The textarea overhangs its column by exactly its padding + border, so its
+   text box lines up with (and is the same width as) the public .profile-bio. */
+.bio-editor {
+  --bio-inset: 13px; /* 12px padding + 1px border */
+  width: calc(100% + 2 * var(--bio-inset));
+  max-width: calc(70ch + 2 * var(--bio-inset));
+  margin-left: calc(-1 * var(--bio-inset));
+  padding: 9px 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: calc(3 * 1.55em + 20px);
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.field-row-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 760px) { .field-row-3 { grid-template-columns: 1fr; } }
+
+.form-actions { display: flex; justify-content: flex-start; }
 
 .image-drop {
   display: flex;
