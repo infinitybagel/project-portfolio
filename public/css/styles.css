@@ -557,6 +557,34 @@ main:focus { outline: none; }
 .student-head > div { min-width: 0; display: grid; gap: 5px; justify-items: start; }
 .student-head h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .student-card p { flex: 1; font-size: 0.9rem; }
+.card-matches {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+.card-matches-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.card-match { font-weight: 600; overflow-wrap: anywhere; }
+.card-match .tag { margin-left: 4px; vertical-align: 1px; }
+
+.search-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 16px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.search-hint .text-btn { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+
 .card-school {
   display: flex;
   align-items: center;

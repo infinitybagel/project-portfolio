@@ -9,6 +9,11 @@ export async function render(root, ctx) {
   if (!ctx.isCurrent()) return;
 
   const owners = new Map(users.map((u) => [u.id, u]));
+  const projectsByUser = new Map();
+  for (const p of projects) {
+    if (!projectsByUser.has(p.userId)) projectsByUser.set(p.userId, []);
+    projectsByUser.get(p.userId).push(p);
+  }
   const byId = new Map(projects.map((p) => [p.id, p]));
   const disciplines = [...new Set(users.map((u) => u.discipline).filter(Boolean))].sort();
   // Distinct project tags, case-insensitive ("IoT" and "iot" count once).
@@ -16,7 +21,7 @@ export async function render(root, ctx) {
 
   let activeTag = ctx.query.get("tag") || "";
   let tab = ctx.query.get("tab") === "projects" || activeTag ? "projects" : "students";
-  let search = "";
+  let terms = []; // lowercase search words; every word must appear (any order)
   let discipline = "";
 
   root.innerHTML = `
@@ -72,7 +77,24 @@ export async function render(root, ctx) {
   };
   const hasTag = (p) => !activeTag || p.tags.some((t) => t.toLowerCase() === activeTag.toLowerCase());
 
-  const matches = (text) => !search || text.toLowerCase().includes(search);
+  const matchesAll = (text) => {
+    const t = text.toLowerCase();
+    return terms.every((term) => t.includes(term));
+  };
+  const matchesAny = (text) => {
+    const t = text.toLowerCase();
+    return terms.some((term) => t.includes(term));
+  };
+  const profileText = (u) => `${u.displayName} ${u.discipline} ${u.school} ${u.bio}`;
+  const projectText = (p) => `${p.title} ${p.tags.join(" ")} ${p.description}`;
+  const projectMatches = (p) => {
+    const owner = owners.get(p.userId);
+    return (
+      (!discipline || owner?.discipline === discipline) &&
+      hasTag(p) &&
+      matchesAll(`${projectText(p)} ${owner?.displayName ?? ""}`)
+    );
+  };
 
   function draw() {
     root.querySelectorAll("[data-tab]").forEach((b) => {
@@ -91,14 +113,27 @@ export async function render(root, ctx) {
         : "";
 
     if (tab === "students") {
-      const list = users.filter(
-        (u) =>
-          (!discipline || u.discipline === discipline) &&
-          matches(`${u.displayName} ${u.discipline} ${u.school} ${u.bio}`)
-      );
+      // A student matches on their own details *or* their projects (titles, tags, descriptions),
+      // so searching a topic like "immunology" finds the student who worked on it.
+      const list = users.filter((u) => {
+        if (discipline && u.discipline !== discipline) return false;
+        const theirProjects = projectsByUser.get(u.id) ?? [];
+        return matchesAll(`${profileText(u)} ${theirProjects.map(projectText).join(" ")}`);
+      });
+      const matchingProjectCount = terms.length ? projects.filter(projectMatches).length : 0;
+      const hint = matchingProjectCount
+        ? `<div class="search-hint">
+             ${matchingProjectCount} matching project${matchingProjectCount === 1 ? "" : "s"}
+             <button type="button" class="text-btn" data-show-projects>View projects ${icons.arrow(13)}</button>
+           </div>`
+        : "";
       results.innerHTML = list.length
-        ? `<div class="grid grid-students">${list.map(studentCardHtml).join("")}</div>`
-        : users.length
+        ? `${hint}<div class="grid grid-students">${list
+            .map((u) => studentCardHtml(u, terms.length ? projectHighlights(u) : []))
+            .join("")}</div>`
+        : hint
+          ? `${hint}${emptyState({ title: "No students match", body: "But some projects do — view them above." })}`
+          : users.length
           ? emptyState({ title: "No students match", body: "Try a different search or discipline." })
           : emptyState({
               title: "No portfolios yet",
@@ -106,14 +141,7 @@ export async function render(root, ctx) {
               action: state.user ? "" : `<a class="btn btn-primary" href="#/register">Create your portfolio</a>`,
             });
     } else {
-      const list = projects.filter((p) => {
-        const owner = owners.get(p.userId);
-        return (
-          (!discipline || owner?.discipline === discipline) &&
-          hasTag(p) &&
-          matches(`${p.title} ${p.tags.join(" ")} ${p.description} ${owner?.displayName ?? ""}`)
-        );
-      });
+      const list = projects.filter(projectMatches);
       results.innerHTML = list.length
         ? `<div class="grid grid-projects">${list
             .map((p) => projectCardHtml(p, { owner: owners.get(p.userId), tagFilter: true }))
@@ -139,10 +167,16 @@ export async function render(root, ctx) {
     draw();
   });
   root.querySelector("#search").addEventListener("input", (e) => {
-    search = e.target.value.trim().toLowerCase();
+    terms = e.target.value.toLowerCase().split(/\s+/).filter(Boolean);
     draw();
   });
   results.addEventListener("click", (e) => {
+    if (e.target.closest("[data-show-projects]")) {
+      tab = "projects";
+      syncUrl();
+      draw();
+      return;
+    }
     const b = e.target.closest("[data-tag]");
     if (!b) return;
     activeTag = b.dataset.tag;
@@ -158,10 +192,17 @@ export async function render(root, ctx) {
   });
   bindProjectOpen(results, (id) => byId.get(id), (p) => owners.get(p.userId));
 
+  /** The student's projects that match the search, each with the tags that matched. */
+  function projectHighlights(u) {
+    return (projectsByUser.get(u.id) ?? [])
+      .filter((p) => matchesAny(projectText(p)))
+      .map((p) => ({ title: p.title, tags: p.tags.filter((t) => matchesAny(t)).slice(0, 2) }));
+  }
+
   draw();
 }
 
-function studentCardHtml(u) {
+function studentCardHtml(u, highlights = []) {
   return `
     <a class="student-card" href="#/profile/${esc(u.id)}">
       <div class="student-head">
@@ -173,6 +214,18 @@ function studentCardHtml(u) {
         </div>
       </div>
       <p class="clamp-3 muted">${u.bio ? esc(u.bio) : "<em>No bio yet.</em>"}</p>
+      ${
+        highlights.length
+          ? `<div class="card-matches">
+               <span class="card-matches-label">Matching project${highlights.length === 1 ? "" : "s"}</span>
+               ${highlights
+                 .slice(0, 2)
+                 .map((h) => `<span class="card-match">${esc(h.title)}${h.tags.map((t) => ` <span class="tag">${esc(t)}</span>`).join("")}</span>`)
+                 .join("")}
+               ${highlights.length > 2 ? `<span class="hint">+${highlights.length - 2} more</span>` : ""}
+             </div>`
+          : ""
+      }
       <span class="card-cta">View portfolio ${icons.arrow(14)}</span>
     </a>`;
 }
