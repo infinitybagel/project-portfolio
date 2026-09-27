@@ -33,6 +33,7 @@ export async function render(root, ctx) {
       <div class="profile-info">
         ${profile.discipline ? `<span class="tag">${esc(profile.discipline)} Engineering</span>` : ""}
         <h1>${esc(profile.displayName)}</h1>
+        ${profile.school ? `<p class="profile-school">${icons.school(17)}<span>${esc(profile.school)}</span></p>` : ""}
         ${profile.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ""}
         <div class="link-row">
           ${resume ? `<a class="btn btn-primary btn-sm" href="${esc(resume)}" target="_blank" rel="noopener noreferrer">${icons.file(15)}Resume</a>` : ""}

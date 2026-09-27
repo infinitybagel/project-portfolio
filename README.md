@@ -6,13 +6,13 @@ Blueprint is a portfolio website for engineering students in every discipline, i
 
 ### For visitors
 - **Explore the directory:** browse every student's profile card, or switch to the **Projects** feed to see recent work from everyone.
-- **Search and filter:** search names, bios, project titles, descriptions and tags. Filter by engineering discipline. Click any project tag (for example **Robotics**) to show only projects with that tag. Filtered views have shareable links, such as `#/explore?tab=projects&tag=Robotics`.
-- **View profiles:** each student's page shows their photo, discipline, bio, resume (PDF), contact links (GitHub, LinkedIn, YouTube, email) and a grid of their projects.
+- **Search and filter:** search names, schools, bios, project titles, descriptions and tags. Filter by engineering discipline. Click any project tag (for example **Robotics**) to show only projects with that tag. Filtered views have shareable links, such as `#/explore?tab=projects&tag=Robotics`.
+- **View profiles:** each student's page shows their photo, discipline, college or university, bio, resume (PDF), contact links (GitHub, LinkedIn, YouTube, email) and a grid of their projects.
 - **View projects:** opening a project shows its full description, tags and links. If the project has a YouTube video, it plays right on the page.
 
 ### For students (after signing up)
 - **Account:** sign up with email and password (with email confirmation), log in and out, and reset a forgotten password by email.
-- **Profile:** set your name, discipline and bio, upload a profile photo, and add GitHub, LinkedIn and YouTube channel links. The bio editor wraps text exactly as your public profile will.
+- **Profile:** set your name, college or university, discipline and bio, upload a profile photo, and add GitHub, LinkedIn and YouTube channel links. The bio editor wraps text exactly as your public profile will.
 - **Resume:** upload a PDF resume (up to 10 MB), then replace or remove it at any time. Visitors see a **Resume** button on your profile that opens it.
 - **Projects:** add, edit and delete projects. Each project has:
   - a title and a description or methodology
@@ -59,7 +59,7 @@ public/                    ← the website (this folder is what gets deployed)
 
 ### Data model
 
-- **`profiles`** (one row per user): `display_name`, `email`, `discipline`, `bio`, `profile_picture_url`, `github_url`, `linkedin_url`, `youtube_url`, `resume_url`, timestamps
+- **`profiles`** (one row per user): `display_name`, `email`, `discipline`, `school`, `bio`, `profile_picture_url`, `github_url`, `linkedin_url`, `youtube_url`, `resume_url`, timestamps
 - **`projects`**: `user_id`, `title`, `tags` (text array), `description`, `image_url`, `project_link`, `github_link`, `cad_link`, `report_link`, `youtube_link`, timestamps
 - **Storage buckets:** `profile_pictures/{userId}`, `project_images/{projectId}` and `resumes/{userId}`
 

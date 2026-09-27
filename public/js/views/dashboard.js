@@ -44,6 +44,7 @@ export async function render(root, ctx) {
     displayName: user.user_metadata?.display_name || "",
     email: user.email,
     discipline: "",
+    school: "",
     bio: "",
     profilePictureUrl: "",
     githubUrl: "",
@@ -77,14 +78,18 @@ export async function render(root, ctx) {
         <div id="avatar-preview">${avatarHtml(profile, 112)}</div>
         <button type="button" class="btn btn-secondary btn-sm" id="avatar-btn">${icons.image(15)}Upload photo</button>
         <input type="file" id="avatar-input" accept="image/*" hidden>
-        <p class="hint">JPG, PNG or WebP, up to 5 MB.</p>
+        <p class="hint">JPG, PNG, or WebP, up to 5 MB.</p>
       </div>
       <form id="profile-form" class="form profile-info" novalidate>
         <h2 id="profile-heading">Your profile</h2>
-        <div class="field-row">
+        <div class="field-row field-row-3">
           <div class="field">
             <label for="p-name">Full name</label>
             <input id="p-name" name="displayName" maxlength="80" value="${esc(profile.displayName)}" required>
+          </div>
+          <div class="field">
+            <label for="p-school">College / university</label>
+            <input id="p-school" name="school" maxlength="120" autocomplete="organization" placeholder="e.g. University of Florida" value="${esc(profile.school)}">
           </div>
           <div class="field">
             <label for="p-discipline">Engineering discipline</label>
@@ -263,6 +268,7 @@ export async function render(root, ctx) {
         displayName: values.displayName,
         email: user.email,
         discipline: values.discipline,
+        school: values.school.replace(/\s+/g, " "),
         bio: values.bio,
         githubUrl,
         linkedinUrl,

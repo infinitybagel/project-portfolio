@@ -3,7 +3,7 @@
 import { supabase } from "./supabase.js";
 
 const PROFILE_COLUMNS =
-  "id, display_name, email, discipline, bio, profile_picture_url, github_url, linkedin_url, youtube_url, resume_url, created_at";
+  "id, display_name, email, discipline, school, bio, profile_picture_url, github_url, linkedin_url, youtube_url, resume_url, created_at";
 const PROJECT_COLUMNS =
   "id, user_id, title, tags, description, image_url, project_link, github_link, cad_link, report_link, youtube_link, created_at";
 
@@ -11,6 +11,7 @@ const PROFILE_FIELDS = {
   displayName: "display_name",
   email: "email",
   discipline: "discipline",
+  school: "school",
   bio: "bio",
   profilePictureUrl: "profile_picture_url",
   githubUrl: "github_url",
@@ -34,6 +35,7 @@ const toProfile = (r) => ({
   displayName: r.display_name,
   email: r.email,
   discipline: r.discipline,
+  school: r.school ?? "",
   bio: r.bio,
   profilePictureUrl: r.profile_picture_url,
   githubUrl: r.github_url,

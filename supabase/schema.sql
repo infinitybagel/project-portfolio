@@ -56,6 +56,11 @@ alter table public.projects drop constraint if exists projects_youtube_link_chec
 alter table public.projects add constraint projects_youtube_link_check
   check (youtube_link = '' or (youtube_link ~* '^https?://' and char_length(youtube_link) <= 500));
 
+-- College / university shown under the student's name.
+alter table public.profiles add column if not exists school text not null default '';
+alter table public.profiles drop constraint if exists profiles_school_check;
+alter table public.profiles add constraint profiles_school_check check (char_length(school) <= 120);
+
 -- Resume (PDF) on profiles: public URL of resumes/{uid}.
 alter table public.profiles add column if not exists resume_url text not null default '';
 alter table public.profiles drop constraint if exists profiles_resume_url_check;

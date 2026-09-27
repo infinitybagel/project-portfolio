@@ -46,7 +46,7 @@ export async function render(root, ctx) {
       </div>
       <label class="search">
         ${icons.search(16)}
-        <input type="search" id="search" placeholder="Search names, projects, skills…" aria-label="Search">
+        <input type="search" id="search" placeholder="Search names, schools, projects, skills…" aria-label="Search">
       </label>
     </div>
     ${
@@ -94,7 +94,7 @@ export async function render(root, ctx) {
       const list = users.filter(
         (u) =>
           (!discipline || u.discipline === discipline) &&
-          matches(`${u.displayName} ${u.discipline} ${u.bio}`)
+          matches(`${u.displayName} ${u.discipline} ${u.school} ${u.bio}`)
       );
       results.innerHTML = list.length
         ? `<div class="grid grid-students">${list.map(studentCardHtml).join("")}</div>`
@@ -169,6 +169,7 @@ function studentCardHtml(u) {
         <div>
           <h3>${esc(u.displayName)}</h3>
           ${u.discipline ? `<span class="tag">${esc(u.discipline)}</span>` : ""}
+          ${u.school ? `<span class="card-school" title="${esc(u.school)}">${icons.school(13)}<span>${esc(u.school)}</span></span>` : ""}
         </div>
       </div>
       <p class="clamp-3 muted">${u.bio ? esc(u.bio) : "<em>No bio yet.</em>"}</p>
