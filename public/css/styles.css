@@ -387,6 +387,36 @@ main:focus { outline: none; }
   background-size: 96px 96px, 96px 96px, 24px 24px, 24px 24px;
   overflow: hidden;
 }
+/* Faded circuit schematic filling the hero's right side. The PNG is white line
+   art with the ink in its alpha channel, used as a mask so it takes the theme's
+   accent color; the gradient layer fades it out toward the headline. */
+.hero::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 24px;
+  width: min(56%, 640px);
+  aspect-ratio: 1258 / 840;
+  transform: translateY(-50%);
+  background-color: var(--accent);
+  opacity: var(--hero-art-opacity, 0.4);
+  pointer-events: none;
+  -webkit-mask-image: url("../img/circuit-schematic.png"), linear-gradient(to right, transparent, #000 40%);
+  -webkit-mask-size: contain, 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-composite: source-in;
+  mask-image: url("../img/circuit-schematic.png"), linear-gradient(to right, transparent, #000 40%);
+  mask-size: contain, 100% 100%;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-composite: intersect;
+}
+.hero > * { position: relative; z-index: 1; }
+@media (prefers-color-scheme: light) { .hero { --hero-art-opacity: 0.28; } }
+/* On narrow screens there is no empty right side, so the art would sit behind the text. */
+@media (max-width: 960px) { .hero::after { display: none; } }
+
 .hero h1 { max-width: 16ch; font-size: clamp(1.9rem, 4.4vw, 3rem); }
 .lede {
   margin-top: 14px;
