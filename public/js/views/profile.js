@@ -28,7 +28,7 @@ export async function render(root, ctx) {
   root.innerHTML = `
     <a class="back-link" href="#/explore">← All students</a>
     <section class="profile-header card">
-      ${avatarHtml(profile, 112)}
+      <div class="avatar-column">${avatarHtml(profile, 112)}</div>
       <div class="profile-info">
         ${profile.discipline ? `<span class="tag">${esc(profile.discipline)} Engineering</span>` : ""}
         <h1>${esc(profile.displayName)}</h1>

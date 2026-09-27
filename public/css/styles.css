@@ -915,11 +915,16 @@ textarea:focus {
 }
 .profile-editor h2 { font-size: 1.2rem; }
 
+/* Shared by the public profile and the dashboard editor so the info column
+   (and the bio) starts at the same x-position in both. Wide enough for the
+   "Upload photo" button (~136px) so nothing spills into the info column. */
 .avatar-column {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
+  align-content: start;
   gap: 10px;
-  width: 112px;
+  width: 148px;
   flex-shrink: 0;
 }
 .avatar-column .hint { text-align: center; }
