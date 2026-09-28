@@ -4,6 +4,10 @@ Blueprint is a portfolio website for engineering students in every discipline, i
 
 **Live site:** [engineering-students-portfolio.netlify.app](https://engineering-students-portfolio.netlify.app/#/explore). It's hosted on Netlify and redeploys automatically on every push to `main`.
 
+Included is a quick YouTube tutorial about the website:
+https://youtu.be/exuYuB7iAm8
+
+
 ## What the website does
 
 ### For visitors
