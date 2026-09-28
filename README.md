@@ -1,5 +1,7 @@
 # Blueprint: Engineering Student Portfolios
 
+https://github.com/infinitybagel/project-portfolio
+
 Blueprint is a portfolio website for engineering students in every discipline, including mechanical, electrical, civil, software, biomedical and aerospace. Students create an account, build a profile, and publish their projects. Anyone can browse the directory to see what other students are building.
 
 **Live site:** [engineering-students-portfolio.netlify.app](https://engineering-students-portfolio.netlify.app/#/explore). It's hosted on Netlify and redeploys automatically on every push to `main`.
